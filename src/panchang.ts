@@ -56,7 +56,11 @@ function getWeekdayIndex(julianDate: number): number {
  * @param year - Year.
  * @returns Julian date.
  */
-function convertMdyToJulian(month: number, day: number, year: number): number {
+export function convertMdyToJulian(
+  month: number,
+  day: number,
+  year: number
+): number {
   // The formula converts a Gregorian date to a Julian Day.
   const intermediateValue = 12 * (year + 4800) + month - 3;
   let julianDay =
@@ -83,7 +87,7 @@ function convertMdyToJulian(month: number, day: number, year: number): number {
  * @param julianDate - Julian date.
  * @returns Delta-T in hours.
  */
-function computeDeltaT(julianDate: number): number {
+export function computeDeltaT(julianDate: number): number {
   // Empirical delta-T values (in seconds) for decades between 1620 and 2010.
   const deltaTEmpiricalValues: number[] = [
     124, 85, 62, 48, 37, 26, 16, 10, 9, 10, 11, 11, 12, 13, 15, 16, 17, 17,
@@ -135,7 +139,7 @@ function computeDeltaT(julianDate: number): number {
  * @param julianDate - Julian date.
  * @returns JavaScript Date object.
  */
-function convertJulianToDate(julianDate: number): Date {
+export function convertJulianToDate(julianDate: number): Date {
   // Shift the Julian date by 0.5 to align with the astronomical day starting at noon.
   const adjustedJD = julianDate + 0.5;
   const integerJD = Math.floor(adjustedJD);
@@ -290,7 +294,7 @@ function computeNutation(julianDate: number): number {
  * @param julianDate - Julian date.
  * @returns Ayanamsa in degrees.
  */
-function calculateAyanamsa(julianDate: number): number {
+export function calculateAyanamsa(julianDate: number): number {
   // Time in Julian centuries from JD 2415020.
   const julianCenturies = (julianDate - 2415020) / 36525;
   // Calculate the longitude of the Moon's ascending node (om) with polynomial corrections.
@@ -319,7 +323,7 @@ function calculateAyanamsa(julianDate: number): number {
  * @param lunationCount - Lunation cycle count (number of synodic months since a base epoch).
  * @returns Julian date of the new moon.
  */
-function computeNewMoonJulian(
+export function computeNewMoonJulian(
   julianDate: number,
   lunationCount: number
 ): number {
@@ -384,7 +388,7 @@ function computeNewMoonJulian(
  * @param calcContext - Calculation context for storing intermediate values.
  * @returns Normalized Moon's longitude in degrees.
  */
-function computeMoonLongitude(
+export function computeMoonLongitude(
   julianDate: number,
   calcContext: CalculationContext
 ): number {
@@ -674,7 +678,7 @@ function computeMoonLongitude(
  * @param calcContext - Calculation context for storing intermediate values.
  * @returns Normalized Sun's longitude in degrees.
  */
-function computeSunLongitude(
+export function computeSunLongitude(
   julianDate: number,
   calcContext: CalculationContext
 ): number {
@@ -799,7 +803,7 @@ function computeSunLongitude(
  * @param calcContext - Calculation context.
  * @returns An object with start and end Date.
  */
-function computeTithiSegment(
+export function computeTithiSegment(
   julianDate: number,
   periodIndex: number,
   timezoneOffset: number,

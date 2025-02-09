@@ -1,242 +1,218 @@
 # Panchang Calculator
 
-The Panchang Calculator is a TypeScript-based implementation designed to compute the traditional Indian almanac (Panchang). It calculates various astronomical and calendrical elements such as:
-
-- **Tithi:** The lunar day or phase.
-- **Nakshatra:** The lunar mansion.
-- **Karana:** A half of a tithi.
-- **Yoga:** A specific combination derived from the sum of the Moon’s and Sun’s longitudes.
-- **Ayanamsa:** The correction applied to account for the precession of the equinoxes.
-- **Raasi:** The zodiac sign determined from the Moon’s position.
-
-This README explains how each of these values is calculated and details the purpose of the key functions and constants used in the project.
+The **Panchang Calculator** is a JavaScript library for calculating various elements of the Indian Panchang (calendar), such as **Tithi**, **Nakshatra**, **Karana**, **Yoga**, and **Raasi**. It uses both traditional Vedic and modern astronomical methods to provide accurate results. Additionally, it includes support for converting Gregorian dates to the **Bikram Sambat (Vikram Sambat)** calendar, the traditional Nepali calendar.
 
 ---
 
-## Table of Contents
+## Features
 
-1. [Overview](#overview)
-2. [Project Structure](#project-structure)
-3. [Constants and Their Roles](#constants-and-their-roles)
-4. [Key Calculations and Functions](#key-calculations-and-functions)
-   - [Date and Time Conversions](#date-and-time-conversions)
-   - [ΔT Calculation](#-t-calculation)
-   - [Iterative Solvers and Kepler’s Equation](#iterative-solvers-and-keplers-equation)
-   - [Nutation and Ayanamsa](#nutation-and-ayanamsa)
-   - [Celestial Positions – Moon and Sun](#celestial-positions--moon-and-sun)
-   - [Interval Calculations: Tithi, Nakshatra, Yoga, and Karana](#interval-calculations-tithi-nakshatra-yoga-and-karana)
-   - [New Moon (Novolun) Estimation](#new-moon-novolun-estimation)
-   - [Longitude to DMS String Conversion](#longitude-to-dms-string-conversion)
-5. [The Panchang Class](#the-panchang-class)
-6. [Usage](#usage)
-7. [References and Further Reading](#references-and-further-reading)
+1. **Panchang Calculations**:
 
----
+   - **Tithi**: Lunar day based on the angular distance between the Moon and Sun.
+   - **Nakshatra**: Lunar mansion based on the Moon's position.
+   - **Karana**: Half of a Tithi.
+   - **Yoga**: Combination of the Sun and Moon's positions.
+   - **Raasi**: Zodiac sign based on the Moon's position.
 
-## Overview
+2. **Bikram Sambat Conversion**:
 
-The Panchang Calculator computes astronomical data by first converting a given local date into the Julian day format. It then applies a series of well-known astronomical formulas to determine the positions of the Moon and Sun relative to the Earth. From these positions, derived values such as tithi, nakshatra, karana, and yoga are calculated using both direct formulae and iterative methods.
+   - Converts Gregorian dates to the Bikram Sambat calendar.
+   - Supports all timezones automatically using the JavaScript `Date` object.
+   - Uses sunrise-based day boundaries for accurate results.
 
-The calculations incorporate various corrections:
+3. **Astronomical Precision**:
 
-- **ΔT (Delta T):** The difference between universal time (UT) and dynamical time, affecting the precise timing of celestial events.
-- **Nutation:** Small periodic oscillations in Earth’s rotation.
-- **Ayanamsa:** The correction required due to the precession of the equinoxes.
+   - Calculates the Sun and Moon's positions using modern astronomical algorithms.
+   - Accounts for precession (ayanamsa) and nutation.
 
-In addition, specialized correction arrays (`corrMoon` and `corrMoon2`) are applied to fine-tune the Moon’s calculated longitude.
+4. **Timezone Support**:
+   - Automatically adjusts for the local timezone using the JavaScript `Date` object.
 
 ---
 
-## Project Structure
+## Installation
 
-- **Constants:**  
-  All “magic numbers” used throughout the calculations have been extracted to the top of the file. These constants include angles (e.g., full circle, half circle), coefficients for series expansions, and numerical offsets used in the Julian day conversion and ΔT estimation. This organization helps in understanding what each value represents and makes it easier to tweak parameters if needed.
+You can install the library via npm:
 
-- **PanchangUtils Namespace:**  
-  Contains helper functions that perform low‑level calculations:
+```bash
+npm install panchang-calculator
+```
 
-  - Date conversions between Gregorian dates and Julian day numbers.
-  - Solving Kepler’s equation using an iterative method.
-  - Computing nutation, ayanamsa, and the celestial positions of the Moon and Sun.
-  - Determining time intervals (using iterative corrections) for tithi, nakshatra, and yoga.
+Or include it directly in your project:
 
-- **Panchang Class:**  
-  This class serves as the primary interface. It calls the utility functions to compute all required Panchang data for a given date and sets the values for day, tithi, nakshatra, karana, yoga, ayanamsa, and raasi.
-
----
-
-## Constants and Their Roles
-
-The extracted constants are grouped by purpose:
-
-- **Angle and Time Constants:**
-
-  - `FULL_CIRCLE` (360°) and `HALF_CIRCLE` (180°) are used to normalize angles.
-  - `HALF` (0.5) is used when converting between calendar days and Julian days.
-  - `MONTHS_PER_YEAR` and `DAYS_PER_YEAR` provide base values for date calculations.
-
-- **Julian Day Conversion Constants:**
-
-  - Constants such as `OFFSET_YEAR`, `MONTH_ADJUSTMENT`, and `JULIAN_DAY_OFFSET` are used to convert Gregorian dates into Julian day numbers, including corrections for the Gregorian calendar reform.
-
-- **ΔT Coefficients:**
-
-  - `DT_COEFFICIENTS` and associated constants (like `DT_PERIOD_START`, `DT_PERIOD_END`) are used to calculate ΔT, which is essential for high-precision time calculations in astronomical events.
-
-- **Astronomical Series Coefficients:**
-
-  - Numerous constants (e.g., `MOON_MEAN_LONG_COEFF`, `SUN_MEAN_ANOMALY_COEFF`, etc.) appear in the series expansions that calculate the mean positions of the Moon and Sun.
-  - The correction arrays (`corrMoon` and `corrMoon2`) contain coefficients used to adjust the Moon’s calculated position for perturbations.
-
-- **Nutation and Ayanamsa Constants:**
-  - Coefficients such as `NUT_LS_BASE`, `NUT_MS_BASE`, and others define the base values and rate coefficients for computing the nutation in longitude.
-  - Similarly, constants in the `calcayan()` function are used to compute the ayanamsa (the precession correction).
-
-Each constant has been given a meaningful name (and documented with JSDoc comments) so that anyone reviewing the code or the README can understand what each parameter represents.
-
----
-
-## Key Calculations and Functions
-
-### Date and Time Conversions
-
-- **`mdy2julian(m, d, y)`**  
-  Converts a Gregorian date (month, day, year) to a Julian day number. The algorithm uses adjustments for the Gregorian calendar reform and extracts a fractional day component.
-
-- **`calData(jd)`**  
-  Converts a Julian day number back to a standard JavaScript `Date` object. During this conversion, it also extracts calendar components (`kyear`, `kmon`, `kday`).
-
-- **`weekDay(jd)`**  
-  Computes the day of the week from the Julian day. (0 represents Sunday and 6 represents Saturday.)
-
-### ΔT Calculation
-
-- **`dTime(jd)`**  
-  Computes ΔT (the difference between Universal Time and dynamical time) based on the input Julian day. This function interpolates between known ΔT values for the period 1620–2010 and applies different quadratic approximations for dates outside that range.
-
-### Iterative Solvers and Kepler’s Equation
-
-- **`kepler(m, ex, err)`**  
-  Solves Kepler’s equation iteratively to find the eccentric anomaly in radians. The function converts the mean anomaly from degrees to radians and iterates until the change is less than the specified tolerance (also converted to radians).
-
-### Nutation and Ayanamsa
-
-- **`nutation(jd)`**  
-  Calculates the nutation in longitude using a series expansion. Nutation accounts for the slight oscillations in Earth’s rotation and affects the apparent positions of the Sun and Moon.
-
-- **`calcayan(jd)`**  
-  Computes the ayanamsa, which is the correction applied due to the precession of the equinoxes. This value is essential when converting between the tropical (Western) and sidereal (Vedic) zodiac systems.
-
-### Celestial Positions – Moon and Sun
-
-- **`moon(jd)`**  
-  Determines the geocentric Moon longitude.
-
-  - It starts with a calculation of the mean lunar longitude.
-  - It computes the mean elongation (the angular difference between the Moon and Sun) and the Moon’s perigee.
-  - Corrections (using the `corrMoon` and `corrMoon2` arrays) are applied iteratively to account for various perturbations.
-  - The function returns the normalized lunar longitude and saves its value (for use in yoga calculations) in a global variable.
-
-- **`sun(jd)`**  
-  Computes the geocentric apparent Sun longitude.
-  - It calculates the Sun’s mean longitude and corrects for perturbations.
-  - An iterative solution (using Kepler’s equation) is applied to adjust the Sun’s position for orbital eccentricity.
-  - Corrections including nutation and aberration adjustments are applied before the final normalized value is returned.
-
-### Interval Calculations: Tithi, Nakshatra, Yoga, and Karana
-
-- **`tithi(jd, n1, tzone, len)`**  
-  Calculates the start and end times for a tithi (or, when used with a length of 6, a karana).
-
-  - The function uses an iterative approach to “zero in” on the precise moment when the angular difference between the Moon and Sun equals multiples of 12° (for tithi) or 6° (for karana).
-
-- **`nakshatra(jd, n_naksh, tzone)`**  
-  Determines the interval for a given nakshatra based on the Moon’s corrected longitude (with ayanamsa applied).
-
-  - Like tithi, it iteratively adjusts the time until the Moon’s position aligns with the expected nakshatra boundary.
-
-- **`yoga(jd, zyoga, tzone)`**  
-  Computes the yoga interval by considering the combined corrections of both the Moon and Sun.
-  - It uses an iterative loop to locate the moment when the sum of the corrected lunar and solar positions reaches the boundaries defining the yoga segments.
-
-### New Moon (Novolun) Estimation
-
-- **`novolun(jd, knv)`**  
-  Estimates the time of the new moon (novolun) near the given Julian day.
-  - The function uses a base epoch and adds a multiple of the lunar cycle (approximately 29.53 days) along with series corrections based on the Moon’s and Sun’s anomalies.
-
-### Longitude to DMS String Conversion
-
-- **`lon2dms(x)`**  
-  Converts a longitude given in decimal degrees into a more human-readable format of degrees, minutes, and seconds.
-
----
-
-## The Panchang Class
-
-The `Panchang` class is the high-level interface for calculating almanac data. When you call its `calculate()` method with a local `Date` object, the class:
-
-1. **Extracts Local Date and Time Components:**  
-   Gets the day, month, year, and local time (including timezone offset).
-
-2. **Converts to Julian Day:**  
-   Uses `mdy2julian()` to get the Julian day number and adjusts for universal time by applying ΔT (from `dTime()`).
-
-3. **Computes Astronomical Corrections:**  
-   Calls `calcayan()` to compute the ayanamsa, then calculates the Moon’s and Sun’s positions via `moon()` and `sun()`, respectively.
-
-4. **Determines Panchang Elements:**
-
-   - **Tithi:** Computed by comparing the Moon’s and Sun’s longitudes.
-   - **Nakshatra:** Determined from the Moon’s position after applying ayanamsa.
-   - **Karana:** Derived similarly to tithi by halving the angular span.
-   - **Yoga:** Calculated by summing the corrected positions of the Moon and Sun.
-   - **Raasi:** Derived from the Moon’s position (dividing the circle into 12 zodiac signs).
-
-5. **Assigns the Calculated Values:**  
-   The class then populates its properties with the calculated values (along with their start and end times, where applicable) so that they can be used in a UI or further processing.
+```html
+<script src="path/to/panchang.js"></script>
+```
 
 ---
 
 ## Usage
 
-To use the Panchang Calculator in your project:
+### 1. Panchang Calculation
 
-1. **Import the Panchang Class:**
+```javascript
+import { PanchangCalculator } from "panchang-calculator";
 
-   ```ts
-   import { Panchang } from "./Panchang";
-   ```
+const date = new Date(); // Current date
+const panchang = new PanchangCalculator().calculate(date);
 
-2. **Create an Instance and Calculate:**
+console.log(panchang);
+```
 
-   ```ts
-   const panchang = new Panchang();
-   const localDate = new Date(); // or any other Date object
-   panchang.calculate(localDate, () => {
-     console.log("Day:", panchang.day.name);
-     console.log("Tithi:", panchang.tithi.name);
-     console.log("Nakshatra:", panchang.nakshatra.name);
-     console.log("Karana:", panchang.karana.name);
-     console.log("Yoga:", panchang.yoga.name);
-     console.log("Ayanamsa:", panchang.ayanamsa.name);
-     console.log("Raasi:", panchang.raasi.name);
-   });
-   ```
+#### Example Output:
 
-3. **Customization:**  
-   Since all constants (such as cycle lengths, series coefficients, and offsets) are defined at the top of the source file, you can adjust these values if you need to tweak the precision or adapt the calculations to different astronomical models.
+```json
+{
+  "day": { "name": "Sunday" },
+  "tithi": {
+    "name": "Shukla Paksha Pratipada",
+    "start": "2023-10-15T06:00:00.000Z",
+    "end": "2023-10-16T06:30:00.000Z"
+  },
+  "nakshatra": {
+    "name": "Ashwini",
+    "start": "2023-10-15T06:00:00.000Z",
+    "end": "2023-10-16T06:30:00.000Z"
+  },
+  "karana": {
+    "name": "Bava",
+    "start": "2023-10-15T06:00:00.000Z",
+    "end": "2023-10-15T18:00:00.000Z"
+  },
+  "yoga": {
+    "name": "Vishkambha",
+    "start": "2023-10-15T06:00:00.000Z",
+    "end": "2023-10-16T06:30:00.000Z"
+  },
+  "raasi": { "name": "Aries" },
+  "ayanamsa": { "name": "23° 51' 12\"" }
+}
+```
 
 ---
 
-## References and Further Reading
+### 2. Bikram Sambat Conversion
 
-- **Astronomical Algorithms** by Jean Meeus – A key resource for many of the astronomical calculations implemented here.
-- **Vedic Astrology Texts** – For understanding the traditional significance of tithi, nakshatra, yoga, and karana.
-- **Nutation and Precession** – Various scholarly articles and texts on celestial mechanics explain the mathematical derivations behind nutation and ayanamsa.
+```javascript
+import { gregorianToBS, formatBSDate } from "panchang-calculator";
+
+const date = new Date(2023, 11, 26); // December 26, 2023
+const bsDate = gregorianToBS(date);
+
+console.log(formatBSDate(bsDate)); // "11 Poush 2080"
+```
+
+#### Example Output:
+
+```
+11 Poush 2080
+```
 
 ---
 
-This README should provide a clear and detailed overview of the Panchang Calculator’s inner workings. Whether you are trying to understand the role of each constant or the iterative methods used in calculating celestial events, this guide serves as a roadmap for the logic behind the code.
+### 3. Custom Location (Sunrise Calculation)
 
-Happy coding and clear skies!
+If you want to use a specific location for sunrise calculations (e.g., Kathmandu), you can override the default sunrise function:
+
+```javascript
+import { gregorianToBS, formatBSDate } from "panchang-calculator";
+
+function getKathmanduSunrise(date) {
+  // Custom sunrise calculation for Kathmandu
+  const dayOfYear = Math.floor(
+    (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const approxSunrise = 6.5; // Average sunrise time in Nepal
+  const variation = 0.5 * Math.sin((2 * Math.PI * (dayOfYear - 80)) / 365); // Seasonal adjustment
+  return (approxSunrise + variation + 5.75) / 24; // UTC+5:45
+}
+
+const date = new Date(2023, 11, 26); // December 26, 2023
+const bsDate = gregorianToBS(date, getKathmanduSunrise);
+
+console.log(formatBSDate(bsDate)); // "11 Poush 2080"
+```
+
+---
+
+## API Reference
+
+### `PanchangCalculator`
+
+#### Methods
+
+- **`calculate(date: Date): PanchangResult`**  
+  Calculates the Panchang for the given date.
+
+  **Parameters**:
+
+  - `date`: A JavaScript `Date` object.
+
+  **Returns**:
+
+  - An object containing:
+    - `day`: Weekday name.
+    - `tithi`: Lunar day details.
+    - `nakshatra`: Lunar mansion details.
+    - `karana`: Half-Tithi details.
+    - `yoga`: Yoga details.
+    - `raasi`: Zodiac sign.
+    - `ayanamsa`: Precession offset.
+
+---
+
+### `gregorianToBS`
+
+#### Methods
+
+- **`gregorianToBS(date: Date, sunriseFn?: (date: Date) => number): { year: number, month: number, day: number }`**  
+  Converts a Gregorian date to the Bikram Sambat calendar.
+
+  **Parameters**:
+
+  - `date`: A JavaScript `Date` object.
+  - `sunriseFn` (optional): A custom function to calculate sunrise as a fraction of the day.
+
+  **Returns**:
+
+  - An object containing:
+    - `year`: Bikram Sambat year.
+    - `month`: Bikram Sambat month (1-12).
+    - `day`: Bikram Sambat day.
+
+- **`formatBSDate(bsDate: { year: number, month: number, day: number }): string`**  
+  Formats a Bikram Sambat date as a string (e.g., "11 Poush 2080").
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bugfix.
+3. Commit your changes.
+4. Submit a pull request.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgments
+
+- The astronomical calculations are based on algorithms from **Jean Meeus' _Astronomical Algorithms_**.
+- The Bikram Sambat conversion logic is inspired by traditional Nepali calendar systems.
+
+---
+
+## Support
+
+For questions or issues, please open an issue on the [GitHub repository](https://github.com/your-repo/panchang-calculator).
+
+---
+
+Enjoy using the Panchang Calculator! 🌞🌙

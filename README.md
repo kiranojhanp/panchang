@@ -1,6 +1,6 @@
 # Panchang Calculator
 
-The **Panchang Calculator** is a JavaScript library for calculating various elements of the Indian Panchang (calendar), such as **Tithi**, **Nakshatra**, **Karana**, **Yoga**, and **Raasi**. It uses both traditional Vedic and modern astronomical methods to provide accurate results. Additionally, it includes support for converting Gregorian dates to the **Bikram Sambat (Vikram Sambat)** calendar, the traditional Nepali calendar.
+The **Panchang Calculator** is a JavaScript library for calculating various elements of the Hindu Panchang (calendar), such as **Tithi**, **Nakshatra**, **Karana**, **Yoga**, and **Raasi**. It uses both traditional Vedic and modern astronomical methods to provide accurate results. Additionally, it includes support for converting Gregorian dates to the **Bikram Sambat (Vikram Sambat)** calendar, the traditional Nepali calendar.
 
 ---
 
@@ -211,7 +211,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Support
 
-For questions or issues, please open an issue on the [GitHub repository](https://github.com/your-repo/panchang-calculator).
+For questions or issues, please open an issue on the [GitHub repository](https://github.com/kiranojhanp/panchang).
 
 ---
 
